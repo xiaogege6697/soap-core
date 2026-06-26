@@ -162,6 +162,40 @@ def describe_fields(path, field_map=None) -> dict:
     }
 
 
+def write_normalized_training_csv(source_path, output_path, field_map=None):
+    """标准化训练日志并写出 CSV，第一列 step 强制为 timestamp 字符串（step_{value}）。
+
+    防 SOAP load_csv 把数值 step 当成状态维度（v0.6.6 发现的 schema 陷阱：
+    数值首列会被识别为特征列，致 d* 虚高）。给 soap.cli analyze 使用的 CSV
+    应经此函数产出，而非直接用 normalize 返回的 TimeSeries 落盘。
+
+    source_path: 原始日志 CSV（外部字段名）
+    output_path: 输出标准 schema CSV 路径
+    field_map: 外部列名 -> 标准字段映射
+    返回：输出 Path。
+    """
+    ts = normalize_training_log(source_path, field_map=field_map)
+    desc = describe_fields(source_path, field_map=field_map)
+    columns = desc["standard_fields_present"]
+    rows = ts.values
+    output_path = Path(output_path)
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(columns)
+        for row in rows:
+            out_cells = []
+            for col, value in zip(columns, row):
+                if col == "step":
+                    try:
+                        out_cells.append(f"step_{int(float(value))}")
+                    except (ValueError, TypeError):
+                        out_cells.append(f"step_{value}")
+                else:
+                    out_cells.append(value)
+            writer.writerow(out_cells)
+    return output_path
+
+
 if __name__ == "__main__":
     _demo_path = Path("examples/realish_training_wandb.csv")
     _demo_field_map = {
