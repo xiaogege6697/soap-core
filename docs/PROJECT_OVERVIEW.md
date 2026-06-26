@@ -112,6 +112,7 @@ soap/
 - **v0.6.9 扩展观测维度**：增加 train_val_gap + output_variance 后，d* 维度上四类首次各不相同（normal=1/mc=2/div=3/overfit=4），overfit 被 train_val_gap 明确拉开（部分解锁）；但 mode_collapse 区分仍弱、动力学指纹（skill/det/next）层面对 normal/overfit/mc 仍不可分——攻 mode_collapse 需 representation features。详见 docs/v0.6_enhanced_observation_benchmark.md。
 - **v0.7 Representation Geometry**：进入表示几何层（隐藏层 effective_rank / collapse_score / representation_variance）。**mode_collapse 被明显拉开**（collapse_score mc=0.998 vs normal=0.65/overfit=0.30；representation_variance mc=0.028 vs normal=0.96）。但 SOAP 动力学指纹（skill/det/next）对 mc/normal/overfit 仍不分——区分靠 representation 指标本身，非 SOAP pipeline。确立**失稳检测分层**：动力学失稳用 SOAP 状态空间，representation 失稳用几何指标直判。详见 docs/v0.7_representation_geometry_benchmark.md。
 - **v0.7.1 Representation Adapter**：把 representation 指标正式化为 direct detection adapter（soap/apps/training/representation_adapter.py），不依赖 SOAP pipeline。规则 A（collapse_score>0.9 且 effective_rank<1.5）正确判 mode_collapse；规则 B（drop_ratio）实测误判 normal/overfit（eff_rank 训练中自然下降）已移除。**两层诊断架构成形**：SOAP 动力学层（divergence）+ representation 直判层（mode_collapse）。tests/test_representation_adapter.py 5 用例全过。详见 docs/v0.7_representation_adapter.md。
+- **v0.7.2 Representation Schema**：定义真实/半真实 representation 数据输入 schema（timestamp / effective_rank / representation_variance / collapse_score 必需 + layer_name / activation_mean / activation_std / sample_count 可选）。多层应分别检测再聚合；toy 阈值不固化进 CLI，真实模型按层按任务校准。为 v0.7.3 多层 benchmark 与真实模型接入铺路。详见 docs/v0.7_representation_schema.md。
 
 ---
 
