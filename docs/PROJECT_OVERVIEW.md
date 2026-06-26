@@ -82,12 +82,17 @@ soap/
 | v0.6 | 应用适配层 `soap/apps/training/`，首个场景 AI training instability |
 | v0.6.1~v0.6.4 | training benchmark 建立**失稳 taxonomy**（见下） |
 | v0.6.5 | 真实训练日志统一 schema + field_map + 字段语义校验 |
+| v0.6.6 | realish benchmark（W&B 风格 CSV 链路验证）+ 发现 step schema 陷阱 |
+| v0.6.7 | 固化 step/timestamp 字符串输出规则（write_normalized_training_csv） |
+| v0.6.8 | 真实 PyTorch 训练 benchmark：taxonomy 迁移部分成功（divergence 可识别，overfit/mode_collapse 不可区分，d* 不迁移） |
 
 ---
 
-## 6. 核心产品假设（v0.6.4 验证）
+## 6. 核心产品假设：从 synthetic taxonomy 到 real training 修正
 
-**训练失稳 ≠ 变随机，而是状态空间结构变化。** SOAP 能提取结构指纹并分类失稳：
+> ⚠️ v0.6.8 修正：四类 taxonomy 在 synthetic / realish 数据中成立，但在真实 PyTorch training 动力学中只部分迁移。当前可靠结论是：SOAP 标准四字段 pipeline 对 divergence 型动力学失稳敏感；overfit / mode_collapse 这类业务语义失稳需要额外观测维度（如 train-val gap、output_variance / representation_variance）才能区分。
+
+**训练失稳 ≠ 变随机，而是状态空间结构变化。** SOAP 能提取结构指纹并分类失稳（下表为 v0.6.4 synthetic taxonomy，不应直接外推到真实训练日志）：
 
 | 类型 | d\* | determinism | grad/loss 行为 |
 |---|---|---|---|
@@ -100,6 +105,10 @@ soap/
 - **二级分类**：坍缩型失稳内部，由 grad/loss 方向区分 divergence（爆炸）vs collapse（衰减）。
 - prediction skill 不能单独作风险指标（diverging 反而最高）。
 - **边界**：当前 taxonomy 基于合成数据，真实训练日志验证前不过度外推。
+- **v0.6.8 修正版结论**：
+  - synthetic / realish：四类可分。
+  - real PyTorch training：divergence 可识别；normal / overfit / mode_collapse 在标准四字段下不可稳定区分。
+  - 下一步产品方向：扩展观测字段（train-val gap、output/representation variance），而不是继续夸大四字段 taxonomy。详见 docs/v0.6_torch_training_benchmark.md。
 
 ---
 
@@ -121,8 +130,8 @@ soap/
 
 ## 9. 路线图
 
-- **v0.6.6**：真实 / 半真实 training CSV benchmark，验证 synthetic taxonomy 是否迁移。
-- **后续**：takens embedding 对照、自动分类规则、W&B API / TensorBoard event 直连、其他应用场景（工业 / 金融）。
+- **v0.6.6~v0.6.8**：realish 链路验证 → step 规则固化 → 真实 PyTorch 训练 benchmark。结论：动力学失稳（divergence）SOAP 可检测且迁移成立；语义性失稳（overfit/mode_collapse）在标准 pipeline 下不可区分；d* 方向不迁移。
+- **后续**：真实 W&B / TensorBoard 项目 run 验证（重点 divergence 类）；overfit/mode_collapse 检测需扩展信号（train-val gap、output_variance）；takens embedding 对照；其他应用场景（工业 / 金融）。
 
 ---
 
