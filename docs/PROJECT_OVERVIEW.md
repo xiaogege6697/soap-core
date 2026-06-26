@@ -109,6 +109,7 @@ soap/
   - synthetic / realish：四类可分。
   - real PyTorch training：divergence 可识别；normal / overfit / mode_collapse 在标准四字段下不可稳定区分。
   - 下一步产品方向：扩展观测字段（train-val gap、output/representation variance），而不是继续夸大四字段 taxonomy。详见 docs/v0.6_torch_training_benchmark.md。
+- **v0.6.9 扩展观测维度**：增加 train_val_gap + output_variance 后，d* 维度上四类首次各不相同（normal=1/mc=2/div=3/overfit=4），overfit 被 train_val_gap 明确拉开（部分解锁）；但 mode_collapse 区分仍弱、动力学指纹（skill/det/next）层面对 normal/overfit/mc 仍不可分——攻 mode_collapse 需 representation features。详见 docs/v0.6_enhanced_observation_benchmark.md。
 
 ---
 
