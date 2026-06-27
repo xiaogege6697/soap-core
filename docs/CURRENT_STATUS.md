@@ -1,116 +1,93 @@
 # SOAP-Core Current Status
 
-- 日期：2026-06-27
-- HEAD：`abe58b4`（v0.7.3，已 push 到 origin/main）
-- 工作区：干净（v0.7.4 阻塞未产出）
-- 本文不含任何 key / token / base_url（遵持久化收尾要求）。
+- 日期：2026-06-28
+- HEAD：`5b52128`（v0.7.3 docs commit，已 push origin/main）
+- 工作区：**v0.7.4 代码 + 实验 + 文档已完成，未 commit**（待用户决定，只 diff 不 push）
+- 本文不含任何 key / token / base_url。
 
 ---
 
 ## 1. 项目出发点与核心问题
 
-- **定位**：领域无关的复杂系统状态空间解释层。从多变量时序中提取结构指纹（最优有效维度、重构状态空间、吸引子、状态转移、预测风险路径），用于失稳检测、分类与早期预警。核心不绑场景，中医/AI训练/工业/金融都是应用层。
-- **核心问题**：训练失稳 ≠ 变随机，而是状态空间结构变化。SOAP 能否提取结构指纹并分类失稳？
-- **首选场景**：AI training instability 预警（loss/grad/lr/val 天然存在，决策闭环短：暂停/降 lr/回滚）。
+- **定位**：领域无关的复杂系统状态空间解释层。核心不绑场景，中医/AI训练/工业/金融都是应用层。
+- **核心问题**：训练失稳 ≠ 变随机，而是状态空间结构变化。SOAP 提取结构指纹并分类失稳。
+- **首选场景**：AI training instability 预警。
 
 ## 2. 理论逻辑链
 
-```
-原始多变量时序
-  → 标准化 / 窗口化
-  → 有效维度搜索 d*（variance / PCA + train/test scoring）
-  → 相空间重构（window 或 Takens + AMI + FNN）
-  → 低维投影
-  → 吸引子聚类（k-means）
-  → 状态转移矩阵 + next-state 概率
-  → 预测诊断（Simplex / S-Map）
-  → recurrence 诊断（RQA：recurrence_rate / determinism / 对角线）
-  → 结构指纹
-  → 应用层（失稳检测 / 分类 / 预警）
-```
+原始多变量时序 → 标准化/窗口化 → 有效维度 d*（PCA + train/test scoring）→ 相空间重构 → 低维投影 → 吸引子聚类 → 状态转移 → Simplex/S-Map 预测 → RQA → 结构指纹 → 应用层。
 
-## 3. 当前两层架构及各自边界
+## 3. 两层诊断架构（不变）
 
-### 层 1：SOAP dynamics layer（动力学失稳）
-- **方法**：d*（PCA）+ attractor/transition + simplex/smap + recurrence（RQA）。
-- **有效**：divergence（skill 崩 / det 骤降 / 吸引子变）、overfit（加 train_val_gap 后 d* 扩张）。
-- **边界**：对 mode_collapse 等业务语义失稳不敏感——曲线平滑可预测，SOAP 指纹近 normal。
+- **层 1 SOAP dynamics**：divergence 有效；mode_collapse 不敏感。
+- **层 2 Representation geometry**：mode_collapse 有效（effective_rank/collapse_score）。
+- **分层原则**：动力学失稳用 SOAP 状态空间；representation 失稳用几何指标直判。两层互补。
 
-### 层 2：Representation geometry layer（表示失稳，direct detection）
-- **方法**：隐藏层 effective_rank（entropy）/ representation_variance / collapse_score（=1/eff_rank，proxy）。
-- **有效**：mode_collapse（collapse_score 高 / eff_rank 近 1）。
-- **边界**：toy 阈值（collapse_score>0.9 且 eff_rank<1.5）benchmark-specific，真实模型需按层按任务校准；collapse_score 是 proxy 非严格度量（真实可用 NC1/CCA 等）。
+## 4. v0.7.4 已完成：HuggingFace 多层 representation collapse benchmark
 
-### 分层原则
-**动力学失稳用 SOAP 状态空间；representation 失稳用几何指标直判**（不强行塞进 SOAP pipeline）。两层互补：divergence 在两层都触发，mode_collapse 只在 representation 层触发，normal/overfit 两层都不触发。
+详细见 `docs/v0.7.4_hf_multilayer_benchmark.md`。要点：
 
-## 4. v0.6.8 → v0.7.3 的证据演进与纠偏
+### 实验设计
+- 模型 `distilbert-base-uncased`（冻结 embedding + 前 3 block，可训练 block 3-5 + 分类头 mask 加权 meanPool + Linear(768,5)）
+- 数据 5 类结构化英文模板（train 1600 / val 400 / probe 128），`data_seed=0` 固定，seed 仅控模型/dropout/batch 顺序
+- 训练 120 步 / batch 16 / AdamW lr 2e-5 wd 0 / 每 3 步在固定 probe set 记录（40 checkpoint）；seed 42/43/44
+- normal vs induced collapse（**controlled progressive rank-1 activation intervention**）
 
-| 版本 | 证据 | 纠偏 |
-|---|---|---|
-| v0.6.8 | 真实 PyTorch 训练：taxonomy 部分迁移（divergence 可识别，overfit/mc 不可分） | v0.6.4 synthetic taxonomy **不可直接外推**；realish "完美迁移"是假象（本质 synthetic 套壳） |
-| v0.6.9 | 加 train_val_gap + output_variance：overfit 部分解锁（d* 四类各不同），mc 仍弱 | **标量观测层触顶**——mc 需 representation features |
-| v0.7 | representation geometry：mc 被明显拉开，但 SOAP 动力学指纹仍不分 | 确立**失稳检测分层** |
-| v0.7.1 | adapter direct detection；规则 B（drop_ratio）误判 normal/overfit 已移除 | collapse 以 **final 值**为准，不以变化比例为准（eff_rank 训练中自然下降） |
-| v0.7.2 | representation input schema 定义 | toy 阈值**不固化进 CLI** |
-| v0.7.3 | 多层：mc 首现深层 hidden_1；any_layer 聚合 4/4 正确 | collapse 是**局部深层**现象；全层聚合（均值/连续）掩盖局部 |
+### Controlled rank-1 intervention（人工干预，非自然 collapse）
+- 在 block 3 输出（`hidden_states[4]`）于 **sample pooled space** 构造 rank-1 目标，写回完整 hidden states（`masked_mean(modified)==target`）
+- `target = global_center + (1-α)·centered + α·((centered·u)·u)`；u = 初始 probe pooled 的 PCA 第一主方向（全 run 固定）
+- α schedule：step 0-20 = 0；step 21-120 线性 → 0.98；只保留 classification loss
 
-**关键纠偏**：any_layer 的 4/4 是 toy（2 层）结果，**层数增加后多重比较会抬升误报率**（v0.7.4 待验证）；consecutive/severity_weighted 在 toy 漏判。
+### 方法论负面结果（4 轮失败，保留不隐藏）
+共同根因：**effective_rank 是归一化能量集中度，干预须让能量集中到少数方向且与检测指标同空间（sample pooled）**。
+1. `-log(var)` 方向反（最小化让 var 增大）
+2. token-level `log(var)`：度量空间不一致
+3. sample-level `log(var)`：isotropic 均匀缩，归一化 effective_rank 反增
+4. rank-1 token-centered（每样本 token mean）：保留样本间满秩差异
 
-## 5. v0.7.4 实验目标、模型选择、校准原则
+### 校准：leave-one-seed-out
+2 个 normal seed 校准逐层 collapse_score 99 分位阈值，1 个 normal seed 评估 FPR；阈值**只用 normal**，禁用 induced 反向调参。双规则 any_layer + persistent（同层连续 ≥3 checkpoint）。
 
-- **目标**：真实多层 transformer 验证 representation collapse 的**逐层阈值、误报率、坍缩传播路径**（不只是接 HuggingFace）。
-- **模型**：distilbert-base-uncased（6 层，hidden=768，66M）—— 已下载就绪。
-- **条件**：
-  - normal：微调，weight_decay=0（校准用）。
-  - induced collapse：微调，weight_decay=1.0 强正则干预（**文档须说明干预机制，不冒充自然训练坍缩**）。
-- **seed**：42 / 43 / 44（≥3）。
-- **校准原则（严格）**：**阈值仅用 normal calibration 数据确定**（逐层 collapse_score 99 分位），**不能用 collapse 数据反向调参**。
-- **双规则**：any_layer（任一层单次命中）+ persistent（同一层连续 ≥3 checkpoint 命中）。
-- **传播路径**：记录 collapse 首现层 + 向后续层传播顺序。
-- **验收**：阈值仅 normal 校准 / ≥3 seed / induced 干预说明 / 保留负面结果 / **只 diff 不 push**。
+### 结果
+- induced **3/3 检出**（any_layer + persistent），首现层 `layer_4 @ step_102`，传播 `layer_4→5→6` 三 seed 一致
+- `layer_4` induced collapse_score 0.974 vs 阈值 0.106（**9 倍区分**，rank-1）
+- normal FPR（**3 seed 小样本，0.333 = 1/3 held-out seed 误报，不外推**；预训练 DistilBERT 合成任务 normal run）：冻结层 `layer_0-3` = 0；可训练深层 `layer_4/5/6` per-layer FPR = 1/3；run-level any_layer FPR = persistent FPR = 1/3
 
-## 6. task 33–39 当前状态与阻塞
+### 双面结论
+1. controlled collapse 可有效检测（3/3，首现层 = 施加层，传播一致，layer_4 9 倍区分）
+2. **层数增加暴露误报**（v0.7.3 toy 2 层未暴露，**仅限本 controlled benchmark 设置**）：预训练 DistilBERT 合成任务 normal run 的可训练深层后期 effective_rank 自然下降，collapse_score 持续超阈值 → 深层 per-layer FPR 1/3（小样本不外推）；persistent 规则未降误报（持续低秩倾向，非瞬时波动）。**结论限于 controlled rank-1 benchmark，不代表自然 mode collapse 已验证**
+3. 冻结层 FPR 0 证实干预空间特异性
+4. collapse 未完整传播（block 4/5 可训练层具表示重扩张能力）
+
+## 5. task 33-39 状态
 
 | task | 状态 |
 |---|---|
-| 33 装 transformers + distilbert | ✅ 完成（6 层 768 就绪） |
-| 34 写 hf_repr_experiment.py | ⏸ 暂停（阻塞） |
-| 35 写校准 + persistent 聚合 | pending |
-| 36 跑实验（3 seed） | pending |
-| 37 分析误报率 / 传播路径 | pending |
-| 38 写 v0.7.4 文档 | pending |
-| 39 更新 memory + 出 diff（不 push） | pending |
+| 33 transformers+distilbert | ✅ |
+| 34 hf_repr_experiment.py | ✅（方案5 pooled rank-1，pilot layer_4→1.03） |
+| 35 hf_collapse_calibration.py | ✅ |
+| 36 正式 6 runs（3 seed × normal/induced） | ✅ |
+| 37 分析误报率/传播路径 | ✅ |
+| 38 v0.7.4 benchmark 文档 | ✅ |
+| 39 memory + diff（不 push） | 🔄 进行中 |
 
-**阻塞**：辅助代码/文档生成模型（MiMo）接入待恢复。恢复后，task 34（hf_repr_experiment.py）spec 已完整设计（见 `memory/projects/soap-core.md` v0.7.4 段），立即重派即可继续。
+## 6. 关键文件
 
-## 7. 下一步准确执行顺序
+- `soap/apps/training/hf_repr_experiment.py`（实验脚本，rank-1 intervention）
+- `soap/apps/training/hf_collapse_calibration.py`（leave-one-seed-out 校准 + 双规则 + 传播）
+- `docs/v0.7.4_hf_multilayer_benchmark.md`（benchmark 科学文档，含 4 失败负面结果）
+- `docs/v0.7.4_calibration_report.md`（校准报告）
+- `docs/v0.7.4_experiment_spec.md`（实验设计 spec）
+- `examples/hf_repr_seed{42,43,44}_{normal,condition_b}.csv`（6 runs 正式数据）
+- `examples/hf_pilot/`（5 轮 pilot，含 4 失败机制负面结果，保留）
 
-1. 恢复 MiMo 接入（用户配置，不写明文 key 到源文件——用环境变量）。
-2. 派 MiMo 写 `hf_repr_experiment.py`（spec 已备）。
-3. 主线程跑实验（3 seed × normal/induced，逐层时序 CSV）。
-4. 派 MiMo 写 `hf_collapse_calibration.py`（仅 normal 校准 + any_layer/persistent + 传播路径）。
-5. 主线程分析逐层误报率与传播顺序。
-6. 派 MiMo 写 v0.7.4 benchmark 文档。
-7. 主线程更新 memory + PROJECT_OVERVIEW，**只 diff 不 push**。
-8. 之后：v0.8 统一 CLI / report（基于 any_layer 聚合 + 逐层诊断，封装两层诊断）。
+## 7. 下一步
 
-## 8. 管家模式及审核教训
+- 待用户决定 v0.7.4 commit（**只 diff 不 push** 已执行）
+- **v0.7.5（下一步，先于 v0.8）**：深层误报抑制 —— 层级基线校准 / 按层动态阈值 / 区分"训练后期自然聚焦"与 controlled collapse（深层 per-layer FPR 1/3 待降）。**统一 CLI 推迟到 v0.8**（深层 per-layer FPR 1/3 说明先做 v0.7.5 校准再封装）
 
-**分工**：MiMo 写代码/文档（省智谱 glm），主线程规划 + 审核 + 真跑验证（不可外包）。
+## 8. 管家模式产出
 
-**主线程审核抓出的关键问题**：
-- v0.6.8 路径 bug（`parents[2]`→`[3]`，spec 写错）；divergence 动力学不达标（full-batch 无噪声→改 mini-batch SGD）。
-- v0.7.1 adapter 规则 B 误判（drop_ratio 移除，改 final 值判定）。
-- MiMo 产出围栏残留（多次）、文档指令语残留（2 次，已沉淀 lesson）。
-
-**沉淀的教训**（见 memory）：
-- MiMo 超时优先重试等待，不主线程接手（除非确认不可恢复）；key 失效用环境变量方案。
-- 给 MiMo 写文档 prompt 避免"请明确写出/必须写出"（会被原样抄进正文）。
-- v0.6.4 教训：数据语义 bug 扭曲 d*（grad_norm 负值），合成与真实数据都须先校验字段语义。
-
-**关键文件**：
-- `docs/PROJECT_OVERVIEW.md`（架构 + 版本表，第 6 节两层诊断）
-- `docs/v0.6_*` / `docs/v0.7_*` benchmark 文档（各版本证据链）
-- `~/.claude/projects/-Users-xiaogege9967/memory/projects/soap-core.md`（版本线 + v0.7.4 进行中状态）
-- `~/.claude/projects/-Users-xiaogege9967/memory/facts/mimo-worker.md`（MiMo 用法 + key 切换）
+- MiMo 写 hf_repr_experiment.py（34A/B/C 分阶段 + max_tokens 16384）+ hf_collapse_calibration.py + v0.7.4 文档；主线程审核 + 真跑验证 + 机制设计迭代
+- 关键修复：mimo_worker `trust_env=False`（macOS 系统代理致 ProxyError，根治）
+- 5 轮 collapse 机制迭代（4 失败 + 方案5 成功），真跑驱动设计纠偏
