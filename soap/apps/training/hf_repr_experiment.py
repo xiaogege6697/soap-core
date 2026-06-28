@@ -200,7 +200,7 @@ class DistilBertClassifier(nn.Module):
     def __init__(self, num_classes=5, dropout=0.1):
         super().__init__()
         self.backbone = DistilBertModel.from_pretrained(
-            "distilbert-base-uncased", output_hidden_states=True
+            "distilbert-base-uncased", output_hidden_states=True, local_files_only=True
         )
         self.classifier = nn.Sequential(
             nn.Dropout(dropout),
@@ -511,7 +511,7 @@ def run_experiment(seed, condition, steps, batch_size, record_every,
         texts_val, labels_val, \
         texts_probe, labels_probe = make_structured_dataset(data_seed=0)
 
-    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
+    tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased", local_files_only=True)
 
     train_input_ids, train_attention_mask = tokenize_texts(texts_train, tokenizer)
     val_input_ids, val_attention_mask = tokenize_texts(texts_val, tokenizer)
