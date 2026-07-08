@@ -1,7 +1,8 @@
 [project]
 name = "soap-core"
-version = "0.1.0"
+version = "0.7.7"
 description = "Domain-agnostic engine for optimal effective dimension discovery and attractor prediction."
+readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Independent Researcher" }]
 dependencies = []
@@ -16,6 +17,9 @@ science = [
 dev = [
   "pytest",
 ]
+
+[project.scripts]
+soap = "soap.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["soap*"]

@@ -40,35 +40,51 @@ reports/
 
 ## 快速运行
 
+SOAP-Core 要求 Python 3.10+。默认 `variance` + `window` + `--predictor none` 路径只依赖标准库；PCA、S-Map、训练应用和图表路径需要科学计算依赖。
+
+仅安装 CLI：
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -e .
+```
+
 安装科学计算依赖：
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/pip install -e ".[science]"
 ```
 
 生成示例数据：
 
 ```bash
-python3 -m soap.cli generate-example --output examples/synthetic_cyclic.csv
+.venv/bin/python -m soap.cli generate-example --output examples/synthetic_cyclic.csv
+```
+
+安装后也可以使用 console script：
+
+```bash
+soap generate-example --output examples/synthetic_cyclic.csv
+soap analyze examples/synthetic_cyclic.csv --max-dim 8 --clusters 3
 ```
 
 生成 Lorenz 混沌示例数据：
 
 ```bash
-python3 -m soap.cli generate-lorenz --output examples/synthetic_lorenz.csv
+.venv/bin/python -m soap.cli generate-lorenz --output examples/synthetic_lorenz.csv
 ```
 
 分析示例数据：
 
 ```bash
-python3 -m soap.cli analyze examples/synthetic_cyclic.csv --max-dim 8 --clusters 3
+.venv/bin/python -m soap.cli analyze examples/synthetic_cyclic.csv --max-dim 8 --clusters 3
 ```
 
 分析 Lorenz 数据：
 
 ```bash
-python3 -m soap.cli analyze examples/synthetic_lorenz.csv --max-dim 8 --clusters 3 --output-dir outputs_lorenz --report-dir reports_lorenz
+.venv/bin/python -m soap.cli analyze examples/synthetic_lorenz.csv --max-dim 8 --clusters 3 --output-dir outputs_lorenz --report-dir reports_lorenz
 ```
 
 使用 PCA + 时间顺序 train/test 预测评分：
@@ -96,6 +112,8 @@ v0.5 已接入 Simplex / S-Map 预测诊断与 recurrence 诊断，默认 `--pre
 ```
 
 当前 CLI 会优先接入 `soap.prediction.simplex`、`soap.prediction.smap` 与 `soap.metrics.recurrence`；若对应模块或 API 尚不存在，会跳过对应诊断并在报告中写明 `unavailable`，不会影响默认 `--predictor none` / 不启用 `--recurrence` 的旧命令。
+
+`v0.7.7` 修复了可选预测模块的导入边界：`soap.prediction.smap` 现在按需加载，没有安装 `numpy` 时仍可使用默认 CLI、示例生成和 `--predictor none` 分析路径。
 
 ## 核心原则
 

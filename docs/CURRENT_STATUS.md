@@ -1,8 +1,14 @@
-# SOAP-Core Current Status（v0.7.6 完成版）
+# SOAP-Core Current Status（v0.7.7）
 
-- 日期：2026-06-30
-- 基线：v0.7.5 `b3abde2`（已 push origin/main）+ v0.7.6 本地 commit（未 push）
-- v0.7.6 class-conditional geometry 完成
+- 日期：2026-07-09
+- v0.7.6 class-conditional geometry 完成。
+- v0.7.7 是工程化维护版本：对齐包版本元信息，补 `soap` console script，并修复可选 S-Map 依赖在默认 CLI 路径上的提前导入。
+
+## 0. v0.7.7 维护说明
+
+- 默认 `variance` + `window` + `--predictor none` 路径应保持可在 Python 3.10+ 标准库环境中运行。
+- PCA、S-Map、训练应用和部分 benchmark 属于可选科学计算路径，需要 `pip install -e ".[science]"` 或额外研究依赖。
+- 本版本不改变 v0.7.6 科学结论，只修复工程入口和版本可信度。
 
 ## 1. v0.7.6 task 状态（全完成）
 | task | 状态 |
