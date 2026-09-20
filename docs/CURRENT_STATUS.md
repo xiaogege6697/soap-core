@@ -38,5 +38,6 @@ induced（controlled rank-1）在可训练层（尤 layer_4）**几何坍缩**�
 - **Mac 睡眠** → multiprocessing semaphore 泄漏 → python 卡 shutdown、CSV 不完整；`caffeinate -i` 防睡眠。
 
 ## 5. 下一步
+- **2026-09-14 盘整**：两份历史接续备份及版本边界已整理至 [历史与能力核对](HISTORY_AND_CAPABILITIES.md)。标准库 CLI 与既有 phase 数据复算通过；38 份 class-conditional CSV 及末段统计已核。未重训、未固定产品版本，候选产品用途待明确。
 - **v0.8 候选**：统一 CLI，phase-aware B 进默认；v0.7.6 语义证据已得（class-conditional **不进默认**，仅 controlled benchmark 内）。
 - **不外推**：跨任务 / 跨模型 / 自然 mode collapse 均未验证；checkpoint 非独立不宣称 conformal。
