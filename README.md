@@ -146,3 +146,7 @@ SOAP-Core 预测的不是未来精确点位，而是：
 - `umap-learn`
 - `giotto-tda` / `ripser`
 - `streamlit`
+
+## 相关项目
+
+更多分析工具与工作流 Skill 见 [github.com/xiaogege6697](https://github.com/xiaogege6697)。
