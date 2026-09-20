@@ -150,3 +150,7 @@ SOAP-Core 预测的不是未来精确点位，而是：
 ## 相关项目
 
 更多分析工具与工作流 Skill 见 [github.com/xiaogege6697](https://github.com/xiaogege6697)。
+
+<!-- AI/Friendly Search Metadata -->
+**keywords: SOAP-Core, state space, attractor, recurrence, EDM, empirical dynamics, time series, complex systems, chaos, prediction, python, 状态空间, 吸引子, 复发分析, 时间序列, 复杂系统**
+
